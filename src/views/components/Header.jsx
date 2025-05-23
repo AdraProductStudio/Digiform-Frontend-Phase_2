@@ -89,7 +89,7 @@ const Header = ({ currentPage }) => {
                             :
                             currentPage === "UpdateInformation" ?
                                 <div className='d-flex justify-content-end gap-2'>
-                                    <Navbar.Collapse className="">
+                                    {/* <Navbar.Collapse className="">
                                         <CustomButton
                                             buttonName={
                                                 isMobileScreen ?
@@ -100,7 +100,7 @@ const Header = ({ currentPage }) => {
                                             className='px-3 btn logout-button'
                                             onClick={() => navigate("/home")}
                                         />
-                                    </Navbar.Collapse>
+                                    </Navbar.Collapse> */}
                                     <Navbar.Collapse className="">
                                         <CustomButton
                                             buttonName="Log out"

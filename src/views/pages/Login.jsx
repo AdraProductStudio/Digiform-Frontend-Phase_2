@@ -98,8 +98,10 @@ const Login = () => {
         sessionStorage.setItem("refreshToken", response.data.data.refresh_token)
         // await handleDigiLockerRequest(response.data.data.access_token)
         setLoading(false)
-        navigate("/home");
         toast.success(response.data.message);
+        sessionStorage.setItem("selectedPdf", "Construction_worker_form_2.pdf")
+        navigate("/update-information");
+        // navigate("/home");
       } else {
         setLoading(false)
         toast.error(response.data.message);
@@ -157,7 +159,7 @@ const Login = () => {
                   onChange={(e) => handleLoginInputs(e)}
                   value={loginInputs?.username || ""}
                   className="mb-2"
-                  // onBlur={() => handleBlur("username")}
+                // onBlur={() => handleBlur("username")}
                 />
                 {
                   error.usernameError &&
