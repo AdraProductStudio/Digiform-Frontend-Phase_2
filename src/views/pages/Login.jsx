@@ -76,7 +76,6 @@ const Login = () => {
     }
 
     if (hasError) {
-      console.error("Validation failed: Fields cannot be empty");
       return;
     }
 
@@ -100,8 +99,8 @@ const Login = () => {
         setLoading(false)
         toast.success(response.data.message);
         sessionStorage.setItem("selectedPdf", "Construction_worker_form_2.pdf")
-        navigate("/update-information");
-        // navigate("/home");
+        // navigate("/update-information");
+        navigate("/home");
       } else {
         setLoading(false)
         toast.error(response.data.message);

@@ -89,76 +89,76 @@ const Signup = () => {
     return confirmPassword === password;
   };
 
-  const handleBlur = (name) => {
-    switch (name) {
-      case "username":
-        if (!signupInputs?.username?.trim()) {
-          setError((prevState) => (
-            { ...prevState, usernameError: true }
-          ))
-          setErrorMessage((prevState) => (
-            { ...prevState, usernameErrorMessage: "Username should not be empty" }
-          ))
-        }
+  // const handleBlur = (name) => {
+  //   switch (name) {
+  //     case "username":
+  //       if (!signupInputs?.username?.trim()) {
+  //         setError((prevState) => (
+  //           { ...prevState, usernameError: true }
+  //         ))
+  //         setErrorMessage((prevState) => (
+  //           { ...prevState, usernameErrorMessage: "Username should not be empty" }
+  //         ))
+  //       }
 
-        break;
-      case "password":
-        if (!signupInputs?.password?.trim()) {
-          setError((prevState) => (
-            { ...prevState, passwordError: true }
-          ))
-          setErrorMessage((prevState) => (
-            { ...prevState, passwordErrorMessage: "Password should not be empty" }
-          ))
-        }
-        else if (!validatePassword(signupInputs?.password)) {
-          setError((prevState) => (
-            { ...prevState, passwordError: true }
-          ))
-          setErrorMessage((prevState) => (
-            { ...prevState, passwordErrorMessage: "Password must be at least 8 characters & contain at least one uppercase & one special character", }
-          ))
-        }
-        else {
-          setError((prevState) => (
-            { ...prevState, passwordError: false }
-          ))
-          setErrorMessage((prevState) => (
-            { ...prevState, passwordErrorMessage: "" }
-          ))
-        }
-        break;
-      case "confirmPassword":
-        if (!signupInputs?.confirmPassword?.trim()) {
-          setError((prevState) => (
-            { ...prevState, confirmPasswordError: true }
-          ))
-          setErrorMessage((prevState) => (
-            { ...prevState, confirmPasswordErrorMessage: "Confirm password should not be empty" }
-          ))
-        }
-        else if (!validateConfirmPassword(signupInputs?.confirmPassword, signupInputs?.password)) {
-          setError((prevState) => (
-            { ...prevState, confirmPasswordError: true }
-          ))
-          setErrorMessage((prevState) => (
-            { ...prevState, confirmPasswordErrorMessage: "Confirm passwords should match with password" }
-          ))
-        }
-        else {
-          setError((prevState) => (
-            { ...prevState, confirmPasswordError: false }
-          ))
-          setErrorMessage((prevState) => (
-            { ...prevState, confirmPasswordErrorMessage: "" }
-          ))
-        }
-        break;
-      default:
-        console.log("default")
-        break;
-    }
-  }
+  //       break;
+  //     case "password":
+  //       if (!signupInputs?.password?.trim()) {
+  //         setError((prevState) => (
+  //           { ...prevState, passwordError: true }
+  //         ))
+  //         setErrorMessage((prevState) => (
+  //           { ...prevState, passwordErrorMessage: "Password should not be empty" }
+  //         ))
+  //       }
+  //       else if (!validatePassword(signupInputs?.password)) {
+  //         setError((prevState) => (
+  //           { ...prevState, passwordError: true }
+  //         ))
+  //         setErrorMessage((prevState) => (
+  //           { ...prevState, passwordErrorMessage: "Password must be at least 8 characters & contain at least one uppercase & one special character", }
+  //         ))
+  //       }
+  //       else {
+  //         setError((prevState) => (
+  //           { ...prevState, passwordError: false }
+  //         ))
+  //         setErrorMessage((prevState) => (
+  //           { ...prevState, passwordErrorMessage: "" }
+  //         ))
+  //       }
+  //       break;
+  //     case "confirmPassword":
+  //       if (!signupInputs?.confirmPassword?.trim()) {
+  //         setError((prevState) => (
+  //           { ...prevState, confirmPasswordError: true }
+  //         ))
+  //         setErrorMessage((prevState) => (
+  //           { ...prevState, confirmPasswordErrorMessage: "Confirm password should not be empty" }
+  //         ))
+  //       }
+  //       else if (!validateConfirmPassword(signupInputs?.confirmPassword, signupInputs?.password)) {
+  //         setError((prevState) => (
+  //           { ...prevState, confirmPasswordError: true }
+  //         ))
+  //         setErrorMessage((prevState) => (
+  //           { ...prevState, confirmPasswordErrorMessage: "Confirm passwords should match with password" }
+  //         ))
+  //       }
+  //       else {
+  //         setError((prevState) => (
+  //           { ...prevState, confirmPasswordError: false }
+  //         ))
+  //         setErrorMessage((prevState) => (
+  //           { ...prevState, confirmPasswordErrorMessage: "" }
+  //         ))
+  //       }
+  //       break;
+  //     default:
+  //       console.log("default")
+  //       break;
+  //   }
+  // }
 
   const handleSignup = async () => {
     let hasError = false;
@@ -183,7 +183,6 @@ const Signup = () => {
 
     // If any errors exist, stop execution
     if (hasError) {
-      console.error("Validation failed: Fields cannot be empty");
       return;
     }
 
@@ -228,7 +227,7 @@ const Signup = () => {
                   onChange={handleSignupInputs}
                   value={signupInputs?.username || ""}
                   className="mb-2"
-                  onBlur={() => handleBlur("username")}
+                  // onBlur={() => handleBlur("username")}
                 />
                 {
                   error.usernameError &&
@@ -247,7 +246,7 @@ const Signup = () => {
                   onChange={handleSignupInputs}
                   value={signupInputs?.password || ""}
                   className="mb-2"
-                  onBlur={() => handleBlur("password")}
+                  // onBlur={() => handleBlur("password")}
                 />
                 {
                   error.passwordError &&
@@ -266,7 +265,7 @@ const Signup = () => {
                   onChange={handleSignupInputs}
                   value={signupInputs?.confirmPassword || ""}
                   className="mb-2"
-                  onBlur={() => handleBlur("confirmPassword")}
+                  // onBlur={() => handleBlur("confirmPassword")}
                   onKeyDown={handleKeyDown}
                 />
                 {

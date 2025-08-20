@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { Form, Col, Container, Row } from 'react-bootstrap'
 import CommonContext from '../../hooks/CommonContext';
 import CustomButton from '../../reusable-components/CustomButton';
@@ -11,8 +11,10 @@ import { Worker, Viewer } from '@react-pdf-viewer/core';
 import { toolbarPlugin } from '@react-pdf-viewer/toolbar';
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/toolbar/lib/styles/index.css';
-import ConstructionWorkerForm from '../../assets/Construction_worker_form_not_fillable.pdf'
-import { FaWpforms } from "react-icons/fa6";
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import CustomModal from '../../reusable-components/CustomModal';
+import { FaWpforms } from 'react-icons/fa';
 import { RiCustomerService2Fill } from "react-icons/ri";
 
 
@@ -24,6 +26,7 @@ const MultistepForm = () => {
     const toolbarPluginInstance = toolbarPlugin();
     const { Toolbar } = toolbarPluginInstance;
 
+    const navigate = useNavigate()
 
     const {
         fetchedPdfBlobFile,
@@ -40,10 +43,13 @@ const MultistepForm = () => {
 
     const [pdfUrl, setPdfUrl] = useState("");
     const [newPdfUrl, setNewPdfUrl] = useState("");
+    const [generateCallModal, setGenerateCallModal] = useState(false);
+
 
     const [loading, setLoading] = useState(false)
     const [loadingAction, setLoadingAction] = useState(null);
     const [generateNewPdfEnabled, setGenerateNewPdfEnabled] = useState(false)
+    const [formFields, setFormFields] = useState({})
     const [pageLoadingModal, setPageLoadingModal] = useState(false)
     const [step, setStep] = useState(1);
     const [dialCode, setDialCode] = useState("")
@@ -58,16 +64,82 @@ const MultistepForm = () => {
     const [language, setLanguage] = useState("Select Language")
 
 
+    const [searchTerm, setSearchTerm] = useState("");
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [options, setOptions] = useState([]);
+    const [selected, setSelected] = useState(null);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const dropdownRef = useRef();
+
+    // Fetch pincode when input is 6 digits
+    // useEffect(() => {
+    //     if (/^\d{5}$/.test(searchTerm)) {
+    //         setSearchLoading(true);
+    //         setOptions([]);
+    //         setShowDropdown(true);
+    //     }
+
+    //     if (/^\d{6}$/.test(searchTerm)) {
+    //         setTimeout(() => {
+    //             getPostOffices(searchTerm);
+    //         }, 10);
+    //     }
+
+    //     if (searchTerm.length < 5 || searchTerm.length > 6) {
+    //         setSearchLoading(false);
+    //         setOptions([]);
+    //     }
+    // }, [searchTerm]);
+
+    // const getPostOffices = async (pincode) => {
+    //     try {
+    //         const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
+    //         const postOffices = response.data[0]?.PostOffice || [];
+    //         const formatted = postOffices.map((item, index) => ({
+    //             id: index + 1,
+    //             name: item.Name,
+    //             pincode: item.Pincode,
+    //         }));
+    //         setOptions(formatted);
+    //         setShowDropdown(true);
+    //     } catch (err) {
+    //         console.error("Error fetching:", err);
+    //         setOptions([]);
+    //     } finally {
+    //         setSearchLoading(false);
+    //     }
+    // };
+
+    const handleSelect = (item) => {
+        setSelected(item);
+        // setSearchTerm("");
+        setOptions([]);
+        setShowDropdown(false);
+    };
+
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+
+
     useEffect(() => {
         (async () => handleFetchPdf())()
     }, [isPdfLoaded])
+
 
     const handleFetchPdf = async () => {
         try {
             setPageLoadingModal(true);
 
             const payload = {
-                // request_id: sessionStorage.getItem("digiLockerAccessId"),
                 filename: sessionStorage.getItem("selectedPdf")
             };
             const response = await axiosInstance.post("/construction_workers_form", payload, {
@@ -78,8 +150,8 @@ const MultistepForm = () => {
 
             if (response.data.error_code === 200) {
                 setPageLoadingModal(false);
-                setStep(2)
                 setStep2Enabled(true)
+                setFormFields(response.data.data.form_fields)
                 const base64ToBlobUrl = (pdfBlob1) => {
                     const base64WithoutPrefix = pdfBlob1.split(",")[1];
                     const byteCharacters = atob(base64WithoutPrefix);
@@ -91,6 +163,7 @@ const MultistepForm = () => {
                 const pdfBlobUrl = base64ToBlobUrl(response.data.data.file_blob);
                 setFetchedPdfBlobFile(response.data.data.file_blob.split(",")[1])
                 setPdfUrl(pdfBlobUrl);
+
             }
             else if (response.data.error_code === 400) {
                 setTimeout(() => {
@@ -115,46 +188,40 @@ const MultistepForm = () => {
         }));
         setCountryCode(phone.dialCode)
         setDialCode(phone.dialCode)
+
     };
 
-    const handleCallNow = async () => {
+    const handleCall = async () => {
+        try {
+            setLoading(true)
+            setLoadingAction("Call")
+            const payload = {
+                "file_blob": fetchedPdfBlobFile,
+                "phone_number": `+${countryCode}${mobileNumber.mobileNumber}`,
+                "language": language,
+            }
+            const response = await axiosInstance.post("/initiate_outbound_call", payload)
 
-        if (mobileNumber.mobileNumber === "") {
-            toast.warn("Please enter your mobile number")
-            return
-        }
-
-        if (window.confirm(`Are you sure you want to call +${mobileNumber.countryCode}${mobileNumber.mobileNumber}?`)) {
-            try {
-                setLoading(true)
-                setLoadingAction("CallNow")
-                const payload = {
-                    "file_blob": fetchedPdfBlobFile,
-                    "phone_number": `+${countryCode}${mobileNumber.mobileNumber}`,
-                    "language": language
-                }
-                const response = await axiosInstance.post("/initiate_outbound_call", payload)
-
-                if (response.data.error_code === 200) {
-                    sessionStorage.setItem("conversationId", response.data.data.conversation_id)
-                    sessionStorage.setItem("serviceId", response.data.data.service_id)
-                    setLoading(false)
-                    toast.success(response.data.message)
-                    setGenerateNewPdfEnabled(true)
-                } else {
-                    setLoading(false)
-                    toast.error(response.data.error_code)
-                }
-            } catch (error) {
+            if (response.data.error_code === 200) {
+                sessionStorage.setItem("conversationId", response.data.data.conversation_id)
+                sessionStorage.setItem("serviceId", response.data.data.service_id)
+                setLoading(false)
+                setGenerateCallModal(false)
+                toast.success(response.data.message)
+                setGenerateNewPdfEnabled(true)
+            } else {
                 setLoading(false)
                 toast.error(response.data.error_code)
-                console.log(error)
             }
+        } catch (error) {
+            setLoading(false)
+            toast.error(response.data.error_code)
+            console.log(error)
         }
     }
 
     const handleFinish = () => {
-        toast.success("Finished")
+        navigate("/home");
     }
 
     const handleGenerateNewPDF = async () => {
@@ -165,14 +232,17 @@ const MultistepForm = () => {
             const payload = {
                 "file_blob": fetchedPdfBlobFile,
                 "conversation_id": sessionStorage.getItem("conversationId"),
-                "service_id": sessionStorage.getItem("serviceId")
+                "service_id": sessionStorage.getItem("serviceId"),
+                "filename": sessionStorage.getItem("selectedPdf"),
+                "form_fields": formFields,
+                "digilocker": false
             }
 
             const response = await axiosInstance.post("/get_filled_form", payload)
 
             if (response.data.error_code === 200) {
                 setLoading(false)
-                setStep(3)
+                setStep(1)
                 setStep3Enabled(true)
                 const base64ToBlobUrl = (pdfBlob1) => {
                     const base64WithoutPrefix = pdfBlob1.split(",")[1];
@@ -184,6 +254,7 @@ const MultistepForm = () => {
 
                 const newPdfBlobUrl = base64ToBlobUrl(response.data.data.file_blob);
                 setFetchedPdfBlobFile(response.data.data.file_blob.split(",")[1])
+                setFormFields(response.data.data.form_fields)
                 setNewPdfUrl(newPdfBlobUrl);
                 toast.success(response.data.message)
             } else if (response.data.error_code === 1) {
@@ -199,6 +270,31 @@ const MultistepForm = () => {
         }
     }
 
+    const modalBodyFun = () => {
+        return (
+            <>
+                <h3 className='my-3 mb-4 text-center ' style={{ color: '#5b719b' }}>Call Request</h3>
+
+                <p className='px-2 text-center' style={{ fontWeight: '450', fontSize: '16px' }}>
+                    {`Would you like to proceed with calling +${mobileNumber.countryCode}${mobileNumber.mobileNumber}?`}
+                </p>
+
+                <div className="mx-2 my-3 mt-4 d-flex gap-3">
+                    <CustomButton
+                        buttonName="Cancel"
+                        className='px-3 mt-2 w-50 btn btn-secondary'
+                        onClick={() => setGenerateCallModal(false)}
+                    />
+                    <CustomButton
+                        buttonName={loading && loadingAction === "Call" ? <CustomSpinner variant="light" size="sm" /> : "Call"}
+                        className='px-3 mt-2 w-50 btn logout-button'
+                        onClick={() => handleCall()}
+                    />
+                </div>
+            </>
+        )
+    }
+
     return (
         <Container className='main-section' fluid>
             <Container className='p-3 p-md-5 h-100'>
@@ -208,8 +304,8 @@ const MultistepForm = () => {
                             <div className={`circle ${step >= 1 ? "active" : ""} cup`} onClick={() => setStep(1)}>1</div>
                             <div className={`line ${step >= 2 ? "filled " : ""} `}></div>
                             <div className={`circle ${step >= 2 ? "active " : ""} cup ${step2Enabled ? "" : "pe-none opacity-25"}`} onClick={() => setStep(2)}>2</div>
-                            <div className={`line ${step >= 3 ? "filled final" : ""}`}></div>
-                            <div className={`circle ${step >= 3 ? "active bg-success" : ""} cup ${step3Enabled ? "" : "pe-none opacity-25"}`} onClick={() => setStep(3)}>3</div>
+                            <div className={`line ${step >= 3 ? "filled" : ""}`}></div>
+                            <div className={`circle ${step >= 3 ? "active" : ""} cup ${step3Enabled ? "" : "pe-none opacity-25"}`} onClick={() => setStep(3)}>3</div>
                         </div>
                     </div>
                     {
@@ -219,102 +315,6 @@ const MultistepForm = () => {
                                 <FaWpforms className='me-3' style={{ marginBottom: '5px' }} size={20} />
                                 Form to be filled
                             </h3>}
-                            <Col className="overflow-scroll w-100 col d-flex justify-content-center ">
-                                {
-                                    pdfUrl ?
-                                        isMobileScreen ?
-                                            <div style={{ height: '100%', width: '100%' }}>
-                                                <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
-                                                    <Toolbar />
-                                                    <Viewer fileUrl={pdfUrl} plugins={[toolbarPluginInstance]} />
-                                                </Worker>
-                                            </div>
-                                            :
-                                            <iframe
-                                                src={ConstructionWorkerForm}
-                                                title="Filled PDF"
-                                                style={{ width: "60%", height: "100vh", border: "none" }}
-                                            />
-                                        :
-                                        null
-                                }
-                            </Col>
-                        </>
-                    }
-                    {
-                        step === 2 &&
-                        <>
-                            <h3 className='mt-4 mb-5 text-center step-heading' >
-                                <RiCustomerService2Fill className='me-3' style={{ marginBottom: '5px' }} size={20} />
-                                AI Voice call
-                            </h3>
-                            <Col className="overflow-scroll w-100 col  ">
-                                <div className='px-lg-5 px-3 mb-5 mx-auto d-block '>
-                                    <div>
-                                        <p htmlFor="field1" className="form-label mb-3 text-grey">There are a few additional questions that need to be answered to complete your application.<br /> Please enter your phone number so we can call you to get that information.</p>
-                                        <p htmlFor="field1" className="form-label mb-3 text-grey fst-italic">(Once the call is complete, please generate the PDF to include the updated details)</p>
-                                        <div>
-                                            <div className="container-fluid mt-4 mx-auto">
-                                                <div className="row mb-2">
-                                                    <div className="mb-4 mt-3 col-sm-12 col-lg-5">
-                                                        <PhoneInput
-                                                            id="floatingInput"
-                                                            specialLabel="Mobile Number"
-                                                            country={dialCode === "" ? "in" : dialCode}
-                                                            dataTestid="mobileNumber"
-                                                            countryCodeEditable={false}
-                                                            enableSearch
-                                                            onChange={(e, phone) =>
-                                                                handlePhoneInput(e, phone, "mobileNumber")
-                                                            }
-                                                            value={`${countryCode}${mobileNumber.mobileNumber}`}
-                                                            inputProps={{
-                                                                alt: "mobileNumber",
-                                                                type: "tel",
-                                                                placeholder: "Mobile Number",
-                                                                required: true,
-                                                                style: { borderColor: "grey", backgroundColor: "white" },
-                                                            }}
-                                                        />
-
-                                                    </div>
-                                                    <div className='mt-sm-0 mb-4 col-sm-12 col-lg-5 mt-lg-3'>
-                                                        <Form.Select aria-label="select language" value={language} onChange={(e) => setLanguage(e.target.value)} size='lg' className='p-2 py-3 fs-6'>
-                                                            <option className='fs-6'>Select Language</option>
-                                                            <option className='fs-6' value="English">English</option>
-                                                            <option className='fs-6' value="Hindi">Hindi</option>
-                                                        </Form.Select>
-                                                    </div>
-
-                                                    <div>
-                                                        <CustomButton
-                                                            buttonName={loading && loadingAction === "CallNow" ? <CustomSpinner variant="light" size="sm" /> : "Call now"}
-                                                            className={`btn btn-success d-block cup call-now-button col-sm-12 col-md-3 col-lg-2 
-                                                                    ${loading || !mobileNumber.mobileNumber || language === "Select Language" ? 'pe-none opacity-50' : ''}`
-                                                            }
-                                                            onClick={handleCallNow}
-                                                        />
-                                                        <CustomButton
-                                                            buttonName={loading && loadingAction === "GenerateNewPDF" ? <CustomSpinner variant="light" size="sm" /> : "Generate new PDF"}
-                                                            className={`btn mt-4 cup generate-new-pdf-button  py-2 col-sm-12 col-md-3 col-lg-2  ${loading || !generateNewPdfEnabled && 'pe-none opacity-50'}`}
-                                                            onClick={handleGenerateNewPDF}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Col>
-                        </>
-                    }
-                    {
-                        step === 3 &&
-                        <>
-                            <h3 className='mt-4 mb-5 text-center step-heading' >
-                                <FaWpforms className='me-3' style={{ marginBottom: '5px' }} size={20} />
-                                Filled form
-                            </h3>
                             <Col className="overflow-scroll w-100 col d-flex justify-content-center ">
                                 {newPdfUrl ?
                                     isMobileScreen ?
@@ -331,10 +331,104 @@ const MultistepForm = () => {
                                             style={{ width: "60%", height: "100%", border: "none" }}
                                         />
                                     :
-                                    null
+                                    pdfUrl ?
+                                        isMobileScreen ?
+                                            <div style={{ height: '100%', width: '100%' }}>
+                                                <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+                                                    <Toolbar />
+                                                    <Viewer fileUrl={pdfUrl} plugins={[toolbarPluginInstance]} />
+                                                </Worker>
+                                            </div>
+                                            :
+                                            <iframe
+                                                src={pdfUrl}
+                                                title="Filled PDF"
+                                                style={{ width: "60%", height: "100vh", border: "none" }}
+                                            />
+                                        :
+                                        null
                                 }
                             </Col>
                         </>
+
+                    }
+                    {
+                        step === 2 &&
+                        <>
+                            <h3 className='mt-4 mb-5 text-center step-heading' >
+                                <RiCustomerService2Fill className='me-3' style={{ marginBottom: '5px' }} size={20} />
+                                AI Voice call
+                            </h3>
+                            <Col className="overflow-scroll w-100 col  ">
+                                <div className='px-lg-5 px-3 mb-5 mx-auto d-block '>
+                                    <div>
+                                        <p htmlFor="field1" className="form-label mb-3 text-grey">There are a few additional questions that need to be answered to complete your application.<br /> Please enter your phone number so we can call you to get that information.</p>
+                                        <p htmlFor="field1" className="form-label mb-3 text-grey fst-italic">(Once the call is complete, please regenerate the PDF to include the updated details)</p>
+                                        <div className="container-fluid mt-4 mx-auto ">
+                                            <div className="row mb-4 align-items-center mt-5">
+                                                <div className="mt-3 mt-lg-0 col-sm-12 col-lg-4">
+                                                    <PhoneInput
+                                                        id="floatingInput"
+                                                        specialLabel="Mobile Number"
+                                                        country={dialCode === "" ? "in" : dialCode}
+                                                        dataTestid="mobileNumber"
+                                                        countryCodeEditable={false}
+                                                        enableSearch
+                                                        onChange={(e, phone) =>
+                                                            handlePhoneInput(e, phone, "mobileNumber")
+                                                        }
+                                                        value={`${countryCode}${mobileNumber.mobileNumber}`}
+                                                        inputProps={{
+                                                            alt: "mobileNumber",
+                                                            type: "tel",
+                                                            placeholder: "Mobile Number",
+                                                            required: true,
+                                                            style: { borderColor: "grey", backgroundColor: "white" },
+                                                        }}
+                                                    />
+
+                                                </div>
+                                                <div className='mt-4 mt-lg-0 col-sm-12 col-lg-4'>
+                                                    <Form.Select aria-label="select language" value={language} onChange={(e) => setLanguage(e.target.value)} size='lg' className='p-2 py-3 fs-6 border-1'>
+                                                        <option className='fs-6'>Select Language</option>
+                                                        {/* <option className='fs-6' value="English">English</option> */}
+                                                        <option className='fs-6' value="Hindi">Hindi</option>
+                                                    </Form.Select>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <CustomButton
+                                                    buttonName="Call now"
+                                                    className={`btn btn-success d-block cup call-now-button col-sm-12 col-md-4 col-lg-3 
+                                                                    ${!mobileNumber.mobileNumber || language === "Select Language" ? 'pe-none opacity-50' : ''}`
+                                                    }
+                                                    onClick={() => setGenerateCallModal(true)}
+                                                />
+                                                <CustomButton
+                                                    buttonName={loading && loadingAction === "GenerateNewPDF" ? <CustomSpinner variant="light" size="sm" /> : "Generate new PDF"}
+                                                    className={`btn mt-4 cup generate-new-pdf-button  py-2 col-sm-12 col-md-4 col-lg-3 ${loading || !generateNewPdfEnabled && 'pe-none opacity-50'}`}
+                                                    onClick={handleGenerateNewPDF}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Col>
+                        </>
+
+                    }
+                    {
+                        step === 3 &&
+                        <>
+                            <div className={`step step-3 px-5`}>
+                                <p htmlFor="field1" className="form-label text-grey mt-5">Thank you for using Digiform!</p>
+                                <div className='mt-4'>
+                                    <button type="button" className="btn btn-success " onClick={() => handleFinish()}>Finish</button>
+                                </div>
+                            </div>
+                        </>
+
                     }
                 </Row>
             </Container>
@@ -370,6 +464,17 @@ const MultistepForm = () => {
                     </div>
                 </div>
             )}
+
+            <CustomModal
+                show={generateCallModal}
+                modalBody={modalBodyFun()}
+                onHide={() => setGenerateCallModal(false)}
+                size="md"
+                aria-labelledby="contained-modal-title-vcenter"
+                centered
+                backdrop="static"
+            />
+
         </Container >
     )
 }
